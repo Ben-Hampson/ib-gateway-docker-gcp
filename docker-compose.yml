@@ -1,28 +1,32 @@
-version: '3.4'
+version: '3'
 services:
   tws:
     build: .
-    #image: dvasdekis/ib-gateway-docker:v978
     volumes:
       - ./ib/IBController.ini:/root/IBController/IBController.ini
       - ./ib/jts.ini:/root/Jts/jts.ini
     environment:
-      - TRADING_MODE=${TWS_TRADING_MODE}
+      - HOST=local
+      - TRADING_MODE=paper
       - TWSUSERID=${TWS_USER_ID}
       - TWSPASSWORD=${TWS_PASSWORD}
-      - FIXUSERID=
-      - FIXPASSWORD=
+      - TWSACCOUNTID=${TWS_ACCOUNT_ID}
       - XVFB_ARGS="-ac -screen 0 1024x768x16 +extension RANDR"
     restart: always
-#   Uncomment the below to use VNC
-    ports:
-      - 5901:5900
-  test:
-    build: tests/ib_insync
+    ports:        # Host Port : Container Port
+      - 5900:5900 # VNC
+  app:
+    build: app
+    volumes:
+      - ./app/src:/tmp/src
     environment:
+      - HOST=local
+      - TRADING_MODE=paper
       - IB_GATEWAY_URLNAME=tws
       - IB_GATEWAY_URLPORT=4004
       - MKT_DATA_TYPE=4
     restart: on-failure
     depends_on:
       - tws
+    ports:
+      - 80:80

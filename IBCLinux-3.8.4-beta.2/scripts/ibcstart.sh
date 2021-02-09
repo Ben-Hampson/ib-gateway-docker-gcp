@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Note that this command file is a 'service file' intended to be called from 
-# higher level command files. There should be no reason for the end user to modify 
+# Note that this command file is a 'service file' intended to be called from
+# higher level command files. There should be no reason for the end user to modify
 # it in any way. So PLEASE DON'T CHANGE IT UNLESS YOU KNOW WHAT YOU'RE DOING!
 
 showUsage () {
@@ -16,6 +16,7 @@ echo "             [--ibc-ini=ibcIni] [--java-path=javaPath]"
 echo "             [--user=userid] [--pw=password]"
 echo "             [--fix-user=fixuserid] [--fix-pw=fixpassword]"
 echo "             [--mode=tradingMode]"
+echo "             [--on2fatimeout=2fatimeoutaction]"
 echo
 echo "  twsVersion              The major version number for TWS"
 echo
@@ -46,7 +47,7 @@ echo "  password                IB account password"
 echo
 echo "  fixuserid               FIX account user id (only if -g or --gateway)"
 echo
-echo "  fixpassword             FIX account password (only if -g or --gateway)" 
+echo "  fixpassword             FIX account password (only if -g or --gateway)"
 echo
 echo "  tradingMode             Indicates whether the live account or the paper "
 echo "                          trading account will be used. Allowed values are:"
@@ -55,6 +56,12 @@ echo "                              live"
 echo "                              paper"
 echo
 echo "                          These values are not case-sensitive."
+echo
+echo "  2fatimeoutaction       Indicates what to do if IBC exits due to second factor"
+echo "                         authentication timeout. Allowed values are:"
+echo
+echo "                              restart"
+echo "                              exit"
 echo
 }
 
@@ -94,6 +101,10 @@ E_IBC_PATH_NOT_EXIST=5
 E_IBC_INI_NOT_EXIST=6
 E_TWS_VMOPTIONS_NOT_FOUND=7
 E_UNKNOWN_OPERATING_SYSTEM=8
+
+# errorlevel set by IBC if second factor authentication dialog times out and
+# ExitAfterSecondFactorAuthenticationTimeout setting is true
+E_2FA_DIALOG_TIMED_OUT=1111
 
 ENTRY_POINT_TWS=ibcalpha.ibc.IbcTws
 ENTRY_POINT_GATEWAY=ibcalpha.ibc.IbcGateway
@@ -139,6 +150,8 @@ do
 		fix_password=${arg:9}
 	elif [[ "${arg:0:7}" = "--mode=" ]]; then
 		mode=${arg:7}
+    elif [[ "${arg:0:15}" = "--on2fatimeout=" ]]; then
+	    twofa_to_action=${arg:15}
 	elif [[ "${arg:0:1}" = "-" ]]; then
 		error_exit $E_INVALID_ARG "Invalid parameter '${arg}'"
 	elif [[ "$tws_version" = "" ]]; then
@@ -154,8 +167,15 @@ if [[ -n "${fix_user_id}" || -n "${fix_password}" ]]; then
 	fi
 fi
 
-if [[ -n "${mode}" && ! "${mode^^}" = "LIVE" && ! "${mode^^}" = "PAPER" ]]; then
-	error_exit	${E_INVALID_ARG} "Trading mode set to ${mode} but must be either 'live' or 'paper'"
+mode_upper=$(echo ${mode} | tr '[:lower:]' '[:upper:]')
+if [[ -n "${mode_upper}" && ! "${mode_upper}" = "LIVE" && ! "${mode_upper}" = "PAPER" ]]; then
+	error_exit	${E_INVALID_ARG} "Trading mode set to ${mode} but must be either 'live' or 'paper' (case-insensitive)"
+fi
+
+
+twofa_to_action_upper=$(echo ${twofa_to_action} | tr '[:lower:]' '[:upper:]')
+if [[ -n "${twofa_to_action_upper}" && ! "${twofa_to_action_upper}" = "RESTART" && ! "${twofa_to_action_upper}" = "EXIT" ]]; then
+	error_exit	${E_INVALID_ARG} "2FA timeout action set to ${twofa_to_action} but must be either 'live' or 'paper' (case-insensitive)"
 fi
 
 echo
@@ -181,7 +201,7 @@ echo -e "--java-path = ${java_path}"
 if [[ -z "${ib_user_id}" && -z "${ib_password}" ]]; then
 	echo -e "--user ="
 	echo -e "--pw ="
-else 
+else
 	echo -e "--user = ***"
 	echo -e "--pw = ***"
 fi
@@ -189,7 +209,7 @@ if [[ "${entry_point}" = "${ENTRY_POINT_GATEWAY}" ]]; then
 	if [[ -z "${fix_user_id}" || -z "${fix_password}" ]]; then
 		echo -e "--fix-user ="
 		echo -e "--fix-pw ="
-	else 
+	else
 		echo -e "--fix-user = ***"
 		echo -e "--fix-pw = ***"
 	fi
@@ -207,7 +227,7 @@ if [ "$os" = "$OS_LINUX" ]; then
 	if [ "$tws_settings_path" = "" ]; then tws_settings_path="${tws_path}" ;fi
 elif [ "$os" = "$OS_OSX" ]; then
 	if [ "$tws_path" = "" ]; then tws_path=~/Applications ;fi
-	if [ "$tws_settings_path" = "" ]; then tws_settings_path="${tws_path}" ;fi
+	if [ "$tws_settings_path" = "" ]; then tws_settings_path=~/Jts ;fi
 fi
 if [ "$ibc_path" = "" ]; then ibc_path=/opt/ibc ;fi
 if [ "$ibc_ini" = "" ]; then ibc_ini=~/ibc/config.ini ;fi
@@ -221,15 +241,15 @@ if [[ "$os" = "$OS_LINUX" ]]; then
 	tws_jars="${tws_path}/${tws_version}/jars"
 	tws_install4j="${tws_path}/${tws_version}/.install4j"
 
-	gateway_vmoptions="${tws_path}/ibgateway/${tws_version}/ibgateway.vmoptions" 
+	gateway_vmoptions="${tws_path}/ibgateway/${tws_version}/ibgateway.vmoptions"
 	gateway_jars="${tws_path}/ibgateway/${tws_version}/jars"
 	gateway_install4j="${tws_path}/ibgateway/${tws_version}/.install4j"
 elif [[ "$os" = "$OS_OSX" ]]; then
-	tws_vmoptions="${tws_path}/tws-${tws_version}.vmoptions"
+	tws_vmoptions=~/Jts/tws-${tws_version}.vmoptions
 	tws_jars="${tws_path}/Trader Workstation ${tws_version}/jars"
 	tws_install4j="${tws_path}/Trader Workstation ${tws_version}/.install4j"
 
-	gateway_vmoptions="${tws_path}/ibgateway-${tws_version}.vmoptions" 
+	gateway_vmoptions=~/Jts/ibgateway-${tws_version}.vmoptions
 	gateway_jars="${tws_path}/IB Gateway ${tws_version}/jars"
 	gateway_install4j="${tws_path}/IB Gateway ${tws_version}/.install4j"
 fi
@@ -239,12 +259,12 @@ if [[ "${entry_point}" = "${ENTRY_POINT_TWS}" ]]; then
 		vmoptions_source="${tws_vmoptions}"
 	elif [[ -e "${gateway_vmoptions}" ]]; then
 		vmoptions_source="${gateway_vmoptions}"
-	fi 
+	fi
 
 	if [[ -e "${tws_jars}" ]]; then
 		jars="${tws_jars}"
 		install4j="${tws_install4j}"
-	else 
+	else
 		jars="${gateway_jars}"
 		install4j="${gateway_install4j}"
 	fi
@@ -280,12 +300,12 @@ if [[ ! -e "$ibc_ini" ]]; then
 fi
 
 if [[ ! -e "$vmoptions_source" ]]; then
-	error_exit $E_TWS_VMOPTIONS_NOT_FOUND "$vmoptions_source does not exist"
+	error_exit $E_TWS_VMOPTIONS_NOT_FOUND "vmoptions file $vmoptions_source does not exist"
 fi
 
 if [[ -n "$java_path" ]]; then
 	if [[ ! -e "$java_path/java" ]]; then
-		error_exit $E_NO_JAVA "$java_path/java does not exist"
+		error_exit $E_NO_JAVA "Java installaton at $java_path/java does not exist"
 	fi
 fi
 
@@ -411,25 +431,35 @@ JAVA_TOOL_OPTIONS=
 
 pushd "$tws_settings_path" > /dev/null
 
-# forward signals (see https://veithen.github.io/2014/11/16/sigterm-propagation.html)
-trap 'kill -TERM $PID' TERM INT
+while :
+do
 
-if [[ -n $got_fix_credentials && -n $got_api_credentials ]]; then
-	"$java_path/java" -cp "$ibc_classpath" $java_vm_options $entry_point "$ibc_ini" "$fix_user_id" "$fix_password" "$ib_user_id" "$ib_password" ${mode} &
-elif  [[ -n $got_fix_credentials ]]; then
-	"$java_path/java" -cp "$ibc_classpath" $java_vm_options $entry_point "$ibc_ini" "$fix_user_id" "$fix_password" ${mode} &
-elif [[ -n $got_api_credentials ]]; then
-	"$java_path/java" -cp "$ibc_classpath" $java_vm_options $entry_point "$ibc_ini" "$ib_user_id" "$ib_password" ${mode} &
-else
-	"$java_path/java" -cp "$ibc_classpath" $java_vm_options $entry_point "$ibc_ini" ${mode} &
-fi
+	# forward signals (see https://veithen.github.io/2014/11/16/sigterm-propagation.html)
+	trap 'kill -TERM $PID' TERM INT
 
-PID=$!
-wait $PID
-trap - TERM INT
-wait $PID
+	if [[ -n $got_fix_credentials && -n $got_api_credentials ]]; then
+		"$java_path/java" -cp "$ibc_classpath" $java_vm_options $entry_point "$ibc_ini" "$fix_user_id" "$fix_password" "$ib_user_id" "$ib_password" ${mode} &
+	elif  [[ -n $got_fix_credentials ]]; then
+		"$java_path/java" -cp "$ibc_classpath" $java_vm_options $entry_point "$ibc_ini" "$fix_user_id" "$fix_password" ${mode} &
+	elif [[ -n $got_api_credentials ]]; then
+		"$java_path/java" -cp "$ibc_classpath" $java_vm_options $entry_point "$ibc_ini" "$ib_user_id" "$ib_password" ${mode} &
+	else
+		"$java_path/java" -cp "$ibc_classpath" $java_vm_options $entry_point "$ibc_ini" ${mode} &
+	fi
 
-exit_code=$?
+	PID=$!
+	wait $PID
+	trap - TERM INT
+	wait $PID
+
+	exit_code=$?
+	if [[ ! ($exit_code = $E_2FA_DIALOG_TIMED_OUT && "${twofa_to_action_upper}" = "RESTART") ]]; then break; fi
+	
+	# wait a few seconds before restarting
+	echo IBC will restart shortly
+	echo sleep 10
+done
+
 echo "$program finished"
 echo
 

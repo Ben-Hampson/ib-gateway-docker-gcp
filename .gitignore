@@ -4,7 +4,6 @@
 .groovy/
 .idea/
 
-bin/
 target/
 
 *.pyc
@@ -15,4 +14,17 @@ node_modules/
 
 *.local
 
+.pylintrc
+.vscode/
+
+app/__pycache__
+app/env
+app/src/__pycache__
+app/src/.env
+app/src/responses
+
+workflows
+
 .env
+
+root/Jts/*
