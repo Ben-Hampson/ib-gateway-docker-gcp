@@ -6,14 +6,13 @@ This app has two main parts:
 2. `/app/` – The business logic. The database of stock prices, the trading strategy logic, and the scripts that make it all happen every day.
 
 ## Features
-* Connection to Binance Futures and Interactive Brokers
-* A portfolio of instruments
-* The ability to trade any stock/ETF on IB in a variety of currencies
-* Pulls historic stock + crypto closes from CryptoCompare, Alpha Vantage, and Yahoo Finance
-* An SQLite database to hold closes, indicator data, and a forecast for each instrument
-* Easily customisable strategy and position-sizing
-* Runs your strategy automatically daily
-* A Telegram bot that reports trades upon completion
+* Connection to Binance Futures and Interactive Brokers APIs
+* A portfolio of stock and crypto instruments
+* Trades any stock on IB in a variety of currencies
+* Pulls historic stock + crypto closes from CryptoCompare, Alpha Vantage, and Yahoo Finance APIs
+* SQLite database to hold price data, indicator data, and a forecast for each instrument
+* Customisable strategy and position-sizing
+* Telegram bot to report updates and trade decisions
 
 Software Versions:
 * IB Gateway: v978.2c
