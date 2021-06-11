@@ -1,4 +1,4 @@
-# tradebot
+# Tradebot
 > *An automated stocks + crypto trading bot trading on Interactive Brokers and Binance.*
 
 This app has two main parts:
@@ -27,7 +27,7 @@ Software Versions:
 
 ## How It Works
 An overview of the business logic in `/app/`:
-### 1. Initialises Subsystems + Database
+### 1. Initialise Subsystems + Database
 `subsystems.py` is a list of instruments (stocks and cryptos) we want to trade. `database.py` creates a table of historic price data for each instrument. If the database is not up to date, it will pull in that latest information from a few APIs.
 
 ### 2. Follow the Strategy
